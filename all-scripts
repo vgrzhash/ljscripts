@@ -1,0 +1,629 @@
+-- LJ ALL SCRIPTS
+-- by: admin.mh
+
+local CoreGui          = game:GetService("CoreGui")
+local TweenService     = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players          = game:GetService("Players")
+
+-- Limpa versão anterior
+for _, g in ipairs(CoreGui:GetChildren()) do
+    if g.Name == "LJ_ALL_SCRIPTS" then g:Destroy() end
+end
+
+-- ============================================================
+-- SCRIPTS
+-- ============================================================
+local scripts = {
+    ["Lennon Kaitun"] = function()
+        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
+    end,
+    ["Miranda Afk"] = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/miirandahub/loader/refs/heads/main/mirandaafk.lua"))()
+    end,
+    ["Lennon Hub"] = function()
+        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
+    end,
+    ["Miranda Hub"] = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/miirandahub/loader/refs/heads/main/stealaeggs"))()
+    end,
+}
+local OPTIONS = {"Lennon Kaitun", "Miranda Afk", "Lennon Hub", "Miranda Hub"}
+local selected = nil
+
+-- ============================================================
+-- CORES
+-- ============================================================
+local C_BG      = Color3.fromRGB(11, 12, 18)
+local C_BG2     = Color3.fromRGB(17, 19, 29)
+local C_BG3     = Color3.fromRGB(23, 26, 40)
+local C_BORDER  = Color3.fromRGB(0, 140, 255)
+local C_ACCENT  = Color3.fromRGB(0, 150, 255)
+local C_TEXT    = Color3.fromRGB(235, 242, 255)
+local C_DIM     = Color3.fromRGB(130, 150, 185)
+
+-- ============================================================
+-- MEDIDAS (matemática correta pra NADA cortar)
+-- ============================================================
+local PANEL_W   = 340
+local TOPBAR_H  = 50
+local PAD       = 16
+local DD_H      = 42          -- botão dropdown
+local GAP       = 10
+local EXEC_H    = 44
+local FOOTER_H  = 18
+local DD_LIST_H = 4 * 30 + 3 * 3 + 10   -- 139 (lista dropdown)
+
+local DD_Y          = PAD
+local EXEC_Y        = DD_Y + DD_H + GAP                       -- 68
+local CONTENT_CLOSE = EXEC_Y + EXEC_H + GAP + FOOTER_H + PAD  -- 156
+local PANEL_CLOSE   = TOPBAR_H + CONTENT_CLOSE                -- 206
+
+local DD_LIST_Y     = DD_Y + DD_H + GAP                       -- 68
+local EXEC_Y_OPEN   = DD_LIST_Y + DD_LIST_H + GAP             -- 217
+local CONTENT_OPEN  = EXEC_Y_OPEN + EXEC_H + GAP + FOOTER_H + PAD -- 305
+local PANEL_OPEN    = TOPBAR_H + CONTENT_OPEN                 -- 355
+
+-- ============================================================
+-- PARENT GUI (STEALTH - evita detecção)
+-- ============================================================
+local parentGui
+pcall(function()
+    if gethui then parentGui = gethui() end
+end)
+if not parentGui then
+    pcall(function() parentGui = CoreGui end)
+end
+if not parentGui then
+    parentGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- Nome aleatório (anti-cheats procuram por nomes fixos)
+local RANDOM_NAME = "UI_" .. tostring(math.random(100000, 999999))
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = RANDOM_NAME
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 999999
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = parentGui
+
+-- Protege a GUI (Synapse / outros executores)
+pcall(function()
+    if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
+    if protectgui then protectgui(ScreenGui) end
+    if protect_gui then protect_gui(ScreenGui) end
+end)
+
+-- ============================================================
+-- SOMBRA (só canto inferior direito)
+-- ============================================================
+local Shadow = Instance.new("ImageLabel")
+Shadow.BackgroundTransparency = 1
+Shadow.Image = "rbxassetid://6015897843"
+Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.ImageTransparency = 0.45
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.SliceCenter = Rect.new(49, 49, 450, 450)
+Shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+Shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+Shadow.Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
+Shadow.ZIndex = 0
+Shadow.Parent = ScreenGui
+
+-- ============================================================
+-- PAINEL
+-- ============================================================
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+Main.Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
+Main.BackgroundColor3 = C_BG
+Main.BorderSizePixel = 0
+Main.ClipsDescendants = true
+Main.ZIndex = 2
+Main.Parent = ScreenGui
+-- ⚠️ NÃO usamos Active/Draggable (anti-cheats detectam isso)
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 16)
+MainCorner.Parent = Main
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = C_BORDER
+MainStroke.Thickness = 1.2
+MainStroke.Transparency = 0.3
+MainStroke.Parent = Main
+
+local MainGrad = Instance.new("UIGradient")
+MainGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 17, 26)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 9, 14)),
+})
+MainGrad.Rotation = 90
+MainGrad.Parent = Main
+
+local function updateShadow()
+    Shadow.Position = UDim2.new(
+        Main.Position.X.Scale, Main.Position.X.Offset + 14,
+        Main.Position.Y.Scale, Main.Position.Y.Offset + 14
+    )
+    Shadow.Size = Main.Size
+end
+updateShadow()
+Main:GetPropertyChangedSignal("Position"):Connect(updateShadow)
+Main:GetPropertyChangedSignal("Size"):Connect(updateShadow)
+
+-- ============================================================
+-- TOPBAR
+-- ============================================================
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, TOPBAR_H)
+TopBar.BackgroundColor3 = C_BG2
+TopBar.BorderSizePixel = 0
+TopBar.ZIndex = 10
+TopBar.Parent = Main
+
+local TopBarCorner = Instance.new("UICorner")
+TopBarCorner.CornerRadius = UDim.new(0, 16)
+TopBarCorner.Parent = TopBar
+
+local TopBarCover = Instance.new("Frame")
+TopBarCover.Size = UDim2.new(1, 0, 0, 18)
+TopBarCover.Position = UDim2.new(0, 0, 1, -18)
+TopBarCover.BackgroundColor3 = C_BG2
+TopBarCover.BorderSizePixel = 0
+TopBarCover.ZIndex = 11
+TopBarCover.Parent = TopBar
+
+local TopLine = Instance.new("Frame")
+TopLine.Size = UDim2.new(1, 0, 0, 1)
+TopLine.Position = UDim2.new(0, 0, 1, -1)
+TopLine.BackgroundColor3 = C_ACCENT
+TopLine.BackgroundTransparency = 0.4
+TopLine.BorderSizePixel = 0
+TopLine.ZIndex = 12
+TopLine.Parent = TopBar
+
+local Dot = Instance.new("Frame")
+Dot.Size = UDim2.new(0, 6, 0, 6)
+Dot.Position = UDim2.new(0, 16, 0.5, -3)
+Dot.BackgroundColor3 = C_ACCENT
+Dot.BorderSizePixel = 0
+Dot.ZIndex = 12
+Dot.Parent = TopBar
+
+local DotCorner = Instance.new("UICorner")
+DotCorner.CornerRadius = UDim.new(1, 0)
+DotCorner.Parent = Dot
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -80, 1, 0)
+Title.Position = UDim2.new(0, 30, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "LJ ALL SCRIPTS"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 15
+Title.TextColor3 = C_TEXT
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 12
+Title.Parent = TopBar
+
+local TitleGrad = Instance.new("UIGradient")
+TitleGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(130, 210, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 130, 255)),
+})
+TitleGrad.Parent = Title
+
+-- Drag area (topbar inteira exceto botão min)
+local DragArea = Instance.new("TextButton")
+DragArea.BackgroundTransparency = 1
+DragArea.Text = ""
+DragArea.Size = UDim2.new(1, -50, 1, 0)
+DragArea.Position = UDim2.new(0, 0, 0, 0)
+DragArea.ZIndex = 11
+DragArea.AutoButtonColor = false
+DragArea.Parent = TopBar
+
+-- Botão minimizar
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 32, 0, 32)
+MinBtn.Position = UDim2.new(1, -42, 0.5, -16)
+MinBtn.BackgroundColor3 = C_BG3
+MinBtn.Text = "—"
+MinBtn.TextColor3 = C_ACCENT
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 17
+MinBtn.AutoButtonColor = false
+MinBtn.ZIndex = 13
+MinBtn.Parent = TopBar
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 8)
+MinCorner.Parent = MinBtn
+
+local MinStroke = Instance.new("UIStroke")
+MinStroke.Color = Color3.fromRGB(0, 100, 180)
+MinStroke.Thickness = 1
+MinStroke.Transparency = 0.5
+MinStroke.Parent = MinBtn
+
+-- ============================================================
+-- CUSTOM DRAG (não usa Draggable = true)
+-- ============================================================
+local dragging, dragStart, startPos
+DragArea.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Main.Position
+        local conn
+        conn = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                conn:Disconnect()
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if not dragging then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- ============================================================
+-- CONTENT
+-- ============================================================
+local Content = Instance.new("Frame")
+Content.Position = UDim2.new(0, 0, 0, TOPBAR_H)
+Content.Size = UDim2.new(1, 0, 1, -TOPBAR_H)
+Content.BackgroundTransparency = 1
+Content.ClipsDescendants = true
+Content.ZIndex = 3
+Content.Parent = Main
+
+-- ============================================================
+-- DROPDOWN BOTÃO
+-- ============================================================
+local DropdownBtn = Instance.new("TextButton")
+DropdownBtn.Position = UDim2.new(0, PAD, 0, DD_Y)
+DropdownBtn.Size = UDim2.new(1, -PAD*2, 0, DD_H)
+DropdownBtn.BackgroundColor3 = C_BG3
+DropdownBtn.Text = ""
+DropdownBtn.AutoButtonColor = false
+DropdownBtn.ZIndex = 5
+DropdownBtn.Parent = Content
+
+local DdCorner = Instance.new("UICorner")
+DdCorner.CornerRadius = UDim.new(0, 10)
+DdCorner.Parent = DropdownBtn
+
+local DdStroke = Instance.new("UIStroke")
+DdStroke.Color = Color3.fromRGB(0, 100, 180)
+DdStroke.Thickness = 1
+DdStroke.Transparency = 0.4
+DdStroke.Parent = DropdownBtn
+
+local DdLabel = Instance.new("TextLabel")
+DdLabel.Size = UDim2.new(1, -44, 1, 0)
+DdLabel.Position = UDim2.new(0, 16, 0, 0)
+DdLabel.BackgroundTransparency = 1
+DdLabel.Text = "Selecione um script..."
+DdLabel.Font = Enum.Font.GothamMedium
+DdLabel.TextSize = 13
+DdLabel.TextColor3 = C_DIM
+DdLabel.TextXAlignment = Enum.TextXAlignment.Left
+DdLabel.ZIndex = 6
+DdLabel.Parent = DropdownBtn
+
+local DdArrow = Instance.new("TextLabel")
+DdArrow.Size = UDim2.new(0, 22, 1, 0)
+DdArrow.Position = UDim2.new(1, -30, 0, 0)
+DdArrow.BackgroundTransparency = 1
+DdArrow.Text = "▼"
+DdArrow.Font = Enum.Font.GothamBold
+DdArrow.TextSize = 11
+DdArrow.TextColor3 = C_ACCENT
+DdArrow.ZIndex = 6
+DdArrow.Parent = DropdownBtn
+
+-- ============================================================
+-- DROPDOWN LISTA
+-- ============================================================
+local DropdownList = Instance.new("Frame")
+DropdownList.Position = UDim2.new(0, PAD, 0, DD_LIST_Y)
+DropdownList.Size = UDim2.new(1, -PAD*2, 0, 0)
+DropdownList.BackgroundColor3 = C_BG3
+DropdownList.BorderSizePixel = 0
+DropdownList.ClipsDescendants = true
+DropdownList.Visible = false
+DropdownList.ZIndex = 4
+DropdownList.Parent = Content
+
+local DlCorner = Instance.new("UICorner")
+DlCorner.CornerRadius = UDim.new(0, 10)
+DlCorner.Parent = DropdownList
+
+local DlStroke = Instance.new("UIStroke")
+DlStroke.Color = Color3.fromRGB(0, 120, 200)
+DlStroke.Thickness = 1
+DlStroke.Transparency = 0.4
+DlStroke.Parent = DropdownList
+
+local DlLayout = Instance.new("UIListLayout")
+DlLayout.Padding = UDim.new(0, 3)
+DlLayout.SortOrder = Enum.SortOrder.LayoutOrder
+DlLayout.Parent = DropdownList
+
+local DlPad = Instance.new("UIPadding")
+DlPad.PaddingTop = UDim.new(0, 5)
+DlPad.PaddingBottom = UDim.new(0, 5)
+DlPad.PaddingLeft = UDim.new(0, 5)
+DlPad.PaddingRight = UDim.new(0, 5)
+DlPad.Parent = DropdownList
+
+-- ============================================================
+-- BOTÃO EXECUTAR
+-- ============================================================
+local ExecuteBtn = Instance.new("TextButton")
+ExecuteBtn.Position = UDim2.new(0, PAD, 0, EXEC_Y)
+ExecuteBtn.Size = UDim2.new(1, -PAD*2, 0, EXEC_H)
+ExecuteBtn.BackgroundColor3 = C_ACCENT
+ExecuteBtn.Text = "EXECUTAR"
+ExecuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExecuteBtn.Font = Enum.Font.GothamBold
+ExecuteBtn.TextSize = 14
+ExecuteBtn.AutoButtonColor = false
+ExecuteBtn.ZIndex = 6
+ExecuteBtn.Parent = Content
+
+local ExecCorner = Instance.new("UICorner")
+ExecCorner.CornerRadius = UDim.new(0, 10)
+ExecCorner.Parent = ExecuteBtn
+
+local ExecGrad = Instance.new("UIGradient")
+ExecGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 175, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 85, 195)),
+})
+ExecGrad.Rotation = 90
+ExecGrad.Parent = ExecuteBtn
+
+local ExecStroke = Instance.new("UIStroke")
+ExecStroke.Color = Color3.fromRGB(0, 210, 255)
+ExecStroke.Thickness = 1
+ExecStroke.Transparency = 0.5
+ExecStroke.Parent = ExecuteBtn
+
+-- ============================================================
+-- RODAPÉ
+-- ============================================================
+local Footer = Instance.new("TextLabel")
+Footer.AnchorPoint = Vector2.new(0.5, 1)
+Footer.Position = UDim2.new(0.5, 0, 1, -6)
+Footer.Size = UDim2.new(1, 0, 0, FOOTER_H)
+Footer.BackgroundTransparency = 1
+Footer.Text = "by: admin.mh"
+Footer.Font = Enum.Font.Gotham
+Footer.TextSize = 10
+Footer.TextColor3 = C_DIM
+Footer.TextTransparency = 0.35
+Footer.ZIndex = 6
+Footer.Parent = Content
+
+-- ============================================================
+-- OPÇÕES DO DROPDOWN
+-- ============================================================
+local dropdownOpen = false
+local closeDropdown
+
+local function createOption(name, order)
+    local Item = Instance.new("TextButton")
+    Item.Size = UDim2.new(1, 0, 0, 30)
+    Item.BackgroundColor3 = Color3.fromRGB(0, 90, 170)
+    Item.BackgroundTransparency = 1
+    Item.Text = ""
+    Item.AutoButtonColor = false
+    Item.LayoutOrder = order
+    Item.ZIndex = 5
+    Item.Parent = DropdownList
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 7)
+    corner.Parent = Item
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -22, 1, 0)
+    lbl.Position = UDim2.new(0, 14, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = name
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 13
+    lbl.TextColor3 = C_DIM
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 6
+    lbl.Parent = Item
+
+    Item.MouseEnter:Connect(function()
+        if selected == name then return end
+        TweenService:Create(Item, TweenInfo.new(0.15), { BackgroundTransparency = 0.5 }):Play()
+        TweenService:Create(lbl, TweenInfo.new(0.15), { TextColor3 = Color3.fromRGB(200, 220, 255) }):Play()
+    end)
+    Item.MouseLeave:Connect(function()
+        if selected == name then return end
+        TweenService:Create(Item, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(lbl, TweenInfo.new(0.15), { TextColor3 = C_DIM }):Play()
+    end)
+
+    Item.MouseButton1Click:Connect(function()
+        selected = name
+        for _, child in ipairs(DropdownList:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundTransparency = 1
+                local l = child:FindFirstChildOfClass("TextLabel")
+                if l then l.TextColor3 = C_DIM end
+            end
+        end
+        Item.BackgroundTransparency = 0
+        lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DdLabel.Text = name
+        DdLabel.TextColor3 = C_TEXT
+        closeDropdown()
+    end)
+end
+
+for i, name in ipairs(OPTIONS) do
+    createOption(name, i)
+end
+
+-- ============================================================
+-- LÓGICA DROPDOWN
+-- ============================================================
+local function openDropdown()
+    if dropdownOpen then return end
+    dropdownOpen = true
+    DropdownList.Visible = true
+
+    TweenService:Create(Main, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, PANEL_W, 0, PANEL_OPEN)
+    }):Play()
+    TweenService:Create(DropdownList, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(1, -PAD*2, 0, DD_LIST_H)
+    }):Play()
+    TweenService:Create(ExecuteBtn, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, PAD, 0, EXEC_Y_OPEN)
+    }):Play()
+    DdArrow.Text = "▲"
+end
+
+closeDropdown = function()
+    if not dropdownOpen then return end
+    dropdownOpen = false
+
+    TweenService:Create(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
+    }):Play()
+    TweenService:Create(DropdownList, TweenInfo.new(0.2), {
+        Size = UDim2.new(1, -PAD*2, 0, 0)
+    }):Play()
+    TweenService:Create(ExecuteBtn, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, PAD, 0, EXEC_Y)
+    }):Play()
+    DdArrow.Text = "▼"
+
+    task.delay(0.22, function()
+        if not dropdownOpen then DropdownList.Visible = false end
+    end)
+end
+
+DropdownBtn.MouseButton1Click:Connect(function()
+    if dropdownOpen then closeDropdown() else openDropdown() end
+end)
+
+DropdownBtn.MouseEnter:Connect(function()
+    TweenService:Create(DdStroke, TweenInfo.new(0.15), { Transparency = 0, Color = C_ACCENT }):Play()
+end)
+DropdownBtn.MouseLeave:Connect(function()
+    TweenService:Create(DdStroke, TweenInfo.new(0.15), { Transparency = 0.4, Color = Color3.fromRGB(0, 100, 180) }):Play()
+end)
+
+-- ============================================================
+-- EXECUTAR
+-- ============================================================
+ExecuteBtn.MouseEnter:Connect(function()
+    TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.15 }):Play()
+end)
+ExecuteBtn.MouseLeave:Connect(function()
+    TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
+end)
+
+ExecuteBtn.MouseButton1Click:Connect(function()
+    if not selected then
+        local orig = ExecGrad.Color
+        ExecGrad.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50))
+        local oldTxt = ExecuteBtn.Text
+        ExecuteBtn.Text = "SELECIONE UM SCRIPT"
+        task.wait(1)
+        ExecGrad.Color = orig
+        ExecuteBtn.Text = oldTxt
+        return
+    end
+
+    if dropdownOpen then closeDropdown() end
+
+    local oldText = ExecuteBtn.Text
+    ExecuteBtn.Text = "EXECUTANDO..."
+    task.wait(0.3)
+
+    -- Executa sem printar nada suspeito
+    local ok, err = pcall(scripts[selected])
+    if ok then
+        ExecuteBtn.Text = "EXECUTADO ✓"
+    else
+        ExecuteBtn.Text = "ERRO"
+    end
+    task.wait(1.3)
+    ExecuteBtn.Text = oldText
+end)
+
+-- ============================================================
+-- MINIMIZAR
+-- ============================================================
+local minimized = false
+
+local function setMinimized(state)
+    if minimized == state then return end
+    minimized = state
+
+    if state then
+        -- Fecha dropdown instantaneamente (sem bug visual)
+        if dropdownOpen then
+            dropdownOpen = false
+            DropdownList.Visible = false
+            DropdownList.Size = UDim2.new(1, -PAD*2, 0, 0)
+            ExecuteBtn.Position = UDim2.new(0, PAD, 0, EXEC_Y)
+            DdArrow.Text = "▼"
+        end
+        Content.Visible = false
+        TweenService:Create(Main, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, PANEL_W, 0, TOPBAR_H)
+        }):Play()
+        MinBtn.Text = "+"
+    else
+        TweenService:Create(Main, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
+        }):Play()
+        task.wait(0.05)
+        Content.Visible = true
+        MinBtn.Text = "—"
+    end
+end
+
+MinBtn.MouseButton1Click:Connect(function()
+    setMinimized(not minimized)
+end)
+
+MinBtn.MouseEnter:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(0, 70, 140) }):Play()
+    TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+end)
+MinBtn.MouseLeave:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.15), { BackgroundColor3 = C_BG3 }):Play()
+    TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
+end)
+
+-- Fecha dropdown ao arrastar
+Main:GetPropertyChangedSignal("Position"):Connect(function()
+    if dropdownOpen then closeDropdown() end
+end)
