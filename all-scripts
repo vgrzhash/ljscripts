@@ -4,7 +4,6 @@
 local CoreGui          = game:GetService("CoreGui")
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local Players          = game:GetService("Players")
 
 -- Limpa versão anterior
 for _, g in ipairs(CoreGui:GetChildren()) do
@@ -30,7 +29,23 @@ local scripts = {
 }
 local OPTIONS = {"Lennon Kaitun", "Miranda Afk", "Lennon Hub", "Miranda Hub"}
 local selected = nil
-local running = false
+
+-- ============================================================
+-- SPAWN UNIVERSAL (funciona em qualquer executor)
+-- ============================================================
+local function backgroundRun(fn)
+    -- Tenta coroutine primeiro (mais universal)
+    local ok = pcall(function()
+        local co = coroutine.create(fn)
+        coroutine.resume(co)
+    end)
+    if ok then return end
+
+    -- Fallback task.spawn
+    pcall(function() task.spawn(fn) end)
+    -- Fallback spawn
+    pcall(function() spawn(fn) end)
+end
 
 -- ============================================================
 -- CORES
@@ -66,7 +81,7 @@ local CONTENT_OPEN  = EXEC_Y_OPEN + EXEC_H + GAP + FOOTER_H + PAD
 local PANEL_OPEN    = TOPBAR_H + CONTENT_OPEN
 
 -- ============================================================
--- PARENT GUI
+-- GUI PARENT
 -- ============================================================
 local parentGui = CoreGui
 pcall(function()
@@ -403,7 +418,7 @@ Footer.ZIndex = 6
 Footer.Parent = Content
 
 -- ============================================================
--- DROPDOWN - OPÇÕES
+-- OPÇÕES
 -- ============================================================
 local dropdownOpen = false
 local closeDropdown
@@ -468,7 +483,7 @@ for i, name in ipairs(OPTIONS) do
 end
 
 -- ============================================================
--- ABRIR / FECHAR DROPDOWN
+-- ABRIR / FECHAR
 -- ============================================================
 local function openDropdown()
     if dropdownOpen or not Main.Parent then return end
@@ -524,7 +539,7 @@ DropdownBtn.MouseLeave:Connect(function()
 end)
 
 -- ============================================================
--- EXECUTAR
+-- EXECUTAR (CORRIGIDO)
 -- ============================================================
 ExecuteBtn.MouseEnter:Connect(function()
     if not ExecuteBtn.Parent then return end
@@ -535,46 +550,51 @@ ExecuteBtn.MouseLeave:Connect(function()
     TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
 end)
 
-ExecuteBtn.MouseButton1Click:Connect(function()
-    -- Bloqueia duplo clique
-    if running then return end
+local function resetButtonText(text)
+    if ExecuteBtn.Parent then
+        ExecuteBtn.Text = text or "EXECUTAR"
+        ExecGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 175, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 85, 195)),
+        })
+    end
+end
 
+ExecuteBtn.MouseButton1Click:Connect(function()
     if not selected then
-        local oldTxt = ExecuteBtn.Text
-        ExecGrad.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50))
         ExecuteBtn.Text = "SELECIONE UM SCRIPT"
-        task.wait(1)
-        if ExecuteBtn.Parent then
-            ExecGrad.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 175, 255)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 85, 195)),
-            })
-            ExecuteBtn.Text = oldTxt
-        end
+        ExecGrad.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50))
+        task.delay(1.2, function() resetButtonText("EXECUTAR") end)
         return
     end
 
     if dropdownOpen then closeDropdown() end
 
-    running = true
-    local oldText = ExecuteBtn.Text
+    -- Pega o nome selecionado ANTES de qualquer coisa
+    local chosen = selected
+    local fn = scripts[chosen]
+    if not fn then return end
+
+    -- Feedback visual imediato
     ExecuteBtn.Text = "EXECUTANDO..."
+    ExecGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 0)),
+    })
 
-    -- Executa em thread separada pra não travar a UI
-    task.spawn(function()
-        local ok, err = pcall(scripts[selected])
+    -- ============================================================
+    -- EXECUTA EM BACKGROUND SEM ESPERAR RETORNO
+    -- (hubs como Lennon Kaitun / Miranda Afk têm loop infinito,
+    --  então o loadstring NUNCA retorna — por isso não podemos
+    --  esperar o pcall terminar pra resetar o botão)
+    -- ============================================================
+    backgroundRun(function()
+        pcall(fn)
+    end)
 
-        if ExecuteBtn.Parent then
-            ExecuteBtn.Text = ok and "EXECUTADO ✓" or "ERRO"
-        end
-
-        task.wait(1.5)
-
-        if ExecuteBtn.Parent then
-            ExecuteBtn.Text = oldText
-        end
-
-        running = false
+    -- Reseta o botão após tempo fixo (não espera o hub)
+    task.delay(2, function()
+        resetButtonText("EXECUTAR")
     end)
 end)
 
@@ -605,9 +625,7 @@ local function setMinimized(state)
             Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
         }):Play()
         task.wait(0.05)
-        if Main.Parent then
-            Content.Visible = true
-        end
+        if Main.Parent then Content.Visible = true end
         MinBtn.Text = "—"
     end
 end
@@ -627,7 +645,6 @@ MinBtn.MouseLeave:Connect(function()
     TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
 end)
 
--- Fecha dropdown ao arrastar
 Main:GetPropertyChangedSignal("Position"):Connect(function()
     if dropdownOpen then closeDropdown() end
 end)
