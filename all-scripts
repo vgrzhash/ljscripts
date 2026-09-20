@@ -11,41 +11,16 @@ for _, g in ipairs(CoreGui:GetChildren()) do
 end
 
 -- ============================================================
--- SCRIPTS
+-- URLs DOS SCRIPTS (separado pra carregar em etapas)
 -- ============================================================
-local scripts = {
-    ["Lennon Kaitun"] = function()
-        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua"))()
-    end,
-    ["Miranda Afk"] = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/miirandahub/loader/refs/heads/main/mirandaafk.lua"))()
-    end,
-    ["Lennon Hub"] = function()
-        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua"))()
-    end,
-    ["Miranda Hub"] = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/miirandahub/loader/refs/heads/main/stealaeggs"))()
-    end,
+local urls = {
+    ["Lennon Kaitun"] = "https://api.luarmor.net/files/v4/loaders/4595fe31a5f7a8b4f4dd7071f3119ef7.lua",
+    ["Miranda Afk"]   = "https://raw.githubusercontent.com/miirandahub/loader/refs/heads/main/mirandaafk.lua",
+    ["Lennon Hub"]    = "https://api.luarmor.net/files/v4/loaders/73260ee6e0b3892aa700a13e1fd7d3c9.lua",
+    ["Miranda Hub"]   = "https://raw.githubusercontent.com/miirandahub/loader/refs/heads/main/stealaeggs",
 }
 local OPTIONS = {"Lennon Kaitun", "Miranda Afk", "Lennon Hub", "Miranda Hub"}
 local selected = nil
-
--- ============================================================
--- SPAWN UNIVERSAL (funciona em qualquer executor)
--- ============================================================
-local function backgroundRun(fn)
-    -- Tenta coroutine primeiro (mais universal)
-    local ok = pcall(function()
-        local co = coroutine.create(fn)
-        coroutine.resume(co)
-    end)
-    if ok then return end
-
-    -- Fallback task.spawn
-    pcall(function() task.spawn(fn) end)
-    -- Fallback spawn
-    pcall(function() spawn(fn) end)
-end
 
 -- ============================================================
 -- CORES
@@ -418,7 +393,7 @@ Footer.ZIndex = 6
 Footer.Parent = Content
 
 -- ============================================================
--- OPÇÕES
+-- OPÇÕES DROPDOWN
 -- ============================================================
 local dropdownOpen = false
 local closeDropdown
@@ -452,13 +427,13 @@ local function createOption(name, order)
 
     Item.MouseEnter:Connect(function()
         if selected == name then return end
-        TweenService:Create(Item, TweenInfo.new(0.15), { BackgroundTransparency = 0.5 }):Play()
-        TweenService:Create(lbl, TweenInfo.new(0.15), { TextColor3 = Color3.fromRGB(200, 220, 255) }):Play()
+        Item.BackgroundTransparency = 0.5
+        lbl.TextColor3 = Color3.fromRGB(200, 220, 255)
     end)
     Item.MouseLeave:Connect(function()
         if selected == name then return end
-        TweenService:Create(Item, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
-        TweenService:Create(lbl, TweenInfo.new(0.15), { TextColor3 = C_DIM }):Play()
+        Item.BackgroundTransparency = 1
+        lbl.TextColor3 = C_DIM
     end)
 
     Item.MouseButton1Click:Connect(function()
@@ -483,7 +458,7 @@ for i, name in ipairs(OPTIONS) do
 end
 
 -- ============================================================
--- ABRIR / FECHAR
+-- ABRIR / FECHAR DROPDOWN
 -- ============================================================
 local function openDropdown()
     if dropdownOpen or not Main.Parent then return end
@@ -531,28 +506,36 @@ end)
 
 DropdownBtn.MouseEnter:Connect(function()
     if not DropdownBtn.Parent then return end
-    TweenService:Create(DdStroke, TweenInfo.new(0.15), { Transparency = 0, Color = C_ACCENT }):Play()
+    DdStroke.Transparency = 0
+    DdStroke.Color = C_ACCENT
 end)
 DropdownBtn.MouseLeave:Connect(function()
     if not DropdownBtn.Parent then return end
-    TweenService:Create(DdStroke, TweenInfo.new(0.15), { Transparency = 0.4, Color = Color3.fromRGB(0, 100, 180) }):Play()
+    DdStroke.Transparency = 0.4
+    DdStroke.Color = Color3.fromRGB(0, 100, 180)
 end)
 
 -- ============================================================
--- EXECUTAR (CORRIGIDO)
+-- EXECUÇÃO (LIGHT - sem travar)
 -- ============================================================
 ExecuteBtn.MouseEnter:Connect(function()
     if not ExecuteBtn.Parent then return end
-    TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.15 }):Play()
+    ExecStroke.Transparency = 0.15
 end)
 ExecuteBtn.MouseLeave:Connect(function()
     if not ExecuteBtn.Parent then return end
-    TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
+    ExecStroke.Transparency = 0.5
 end)
 
-local function resetButtonText(text)
-    if ExecuteBtn.Parent then
-        ExecuteBtn.Text = text or "EXECUTAR"
+local function setBtn(text, isError)
+    if not ExecuteBtn.Parent then return end
+    ExecuteBtn.Text = text
+    if isError then
+        ExecGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(230, 70, 70)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 30, 30)),
+        })
+    else
         ExecGrad.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 175, 255)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 85, 195)),
@@ -560,41 +543,66 @@ local function resetButtonText(text)
     end
 end
 
+-- Spawn universal (funciona em qualquer executor)
+local function spawnTask(fn)
+    local ok = pcall(function() task.spawn(fn) end)
+    if not ok then
+        pcall(function() spawn(fn) end)
+    end
+end
+
 ExecuteBtn.MouseButton1Click:Connect(function()
     if not selected then
-        ExecuteBtn.Text = "SELECIONE UM SCRIPT"
-        ExecGrad.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50))
-        task.delay(1.2, function() resetButtonText("EXECUTAR") end)
+        setBtn("SELECIONE UM SCRIPT", true)
+        task.delay(1.2, function() setBtn("EXECUTAR", false) end)
         return
     end
 
     if dropdownOpen then closeDropdown() end
 
-    -- Pega o nome selecionado ANTES de qualquer coisa
-    local chosen = selected
-    local fn = scripts[chosen]
-    if not fn then return end
+    local chosenUrl = urls[selected]
+    if not chosenUrl then return end
 
-    -- Feedback visual imediato
-    ExecuteBtn.Text = "EXECUTANDO..."
-    ExecGrad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 0)),
-    })
+    setBtn("BAIXANDO...", false)
 
-    -- ============================================================
-    -- EXECUTA EM BACKGROUND SEM ESPERAR RETORNO
-    -- (hubs como Lennon Kaitun / Miranda Afk têm loop infinito,
-    --  então o loadstring NUNCA retorna — por isso não podemos
-    --  esperar o pcall terminar pra resetar o botão)
-    -- ============================================================
-    backgroundRun(function()
-        pcall(fn)
-    end)
+    -- ⚠️ YIELD aqui: libera o frame pra UI atualizar antes do trabalho pesado
+    task.wait(0.08)
 
-    -- Reseta o botão após tempo fixo (não espera o hub)
-    task.delay(2, function()
-        resetButtonText("EXECUTAR")
+    spawnTask(function()
+        -- ETAPA 1: baixar o source
+        local okHttp, source = pcall(function()
+            return game:HttpGet(chosenUrl)
+        end)
+
+        if not okHttp or not source then
+            setBtn("ERRO AO BAIXAR", true)
+            task.delay(2, function() setBtn("EXECUTAR", false) end)
+            return
+        end
+
+        setBtn("CARREGANDO...", false)
+        task.wait(0.05)
+
+        -- ETAPA 2: compilar
+        local compileOk, compiled = pcall(function()
+            return loadstring(source)
+        end)
+
+        if not compileOk or not compiled then
+            setBtn("SCRIPT INVÁLIDO", true)
+            task.delay(2, function() setBtn("EXECUTAR", false) end)
+            return
+        end
+
+        setBtn("EXECUTANDO...", false)
+        task.wait(0.05)
+
+        -- ETAPA 3: rodar (não espera retorno - hubs têm loop infinito)
+        pcall(compiled)
+
+        -- Como o hub fica em loop, o pcall só retorna se der erro antes
+        -- então resetamos o botão por tempo fixo
+        task.delay(2, function() setBtn("EXECUTAR", false) end)
     end)
 end)
 
@@ -636,13 +644,13 @@ end)
 
 MinBtn.MouseEnter:Connect(function()
     if not MinBtn.Parent then return end
-    TweenService:Create(MinBtn, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(0, 70, 140) }):Play()
-    TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+    MinBtn.BackgroundColor3 = Color3.fromRGB(0, 70, 140)
+    MinStroke.Transparency = 0
 end)
 MinBtn.MouseLeave:Connect(function()
     if not MinBtn.Parent then return end
-    TweenService:Create(MinBtn, TweenInfo.new(0.15), { BackgroundColor3 = C_BG3 }):Play()
-    TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
+    MinBtn.BackgroundColor3 = C_BG3
+    MinStroke.Transparency = 0.5
 end)
 
 Main:GetPropertyChangedSignal("Position"):Connect(function()
