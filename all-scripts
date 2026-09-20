@@ -8,7 +8,7 @@ local Players          = game:GetService("Players")
 
 -- Limpa versão anterior
 for _, g in ipairs(CoreGui:GetChildren()) do
-    if g.Name == "LJ_ALL_SCRIPTS" then g:Destroy() end
+    if g.Name:sub(1,3) == "UI_" then pcall(function() g:Destroy() end) end
 end
 
 -- ============================================================
@@ -30,6 +30,7 @@ local scripts = {
 }
 local OPTIONS = {"Lennon Kaitun", "Miranda Afk", "Lennon Hub", "Miranda Hub"}
 local selected = nil
+local running = false
 
 -- ============================================================
 -- CORES
@@ -43,60 +44,44 @@ local C_TEXT    = Color3.fromRGB(235, 242, 255)
 local C_DIM     = Color3.fromRGB(130, 150, 185)
 
 -- ============================================================
--- MEDIDAS (matemática correta pra NADA cortar)
+-- MEDIDAS
 -- ============================================================
 local PANEL_W   = 340
 local TOPBAR_H  = 50
 local PAD       = 16
-local DD_H      = 42          -- botão dropdown
+local DD_H      = 42
 local GAP       = 10
 local EXEC_H    = 44
 local FOOTER_H  = 18
-local DD_LIST_H = 4 * 30 + 3 * 3 + 10   -- 139 (lista dropdown)
+local DD_LIST_H = 4 * 30 + 3 * 3 + 10
 
 local DD_Y          = PAD
-local EXEC_Y        = DD_Y + DD_H + GAP                       -- 68
-local CONTENT_CLOSE = EXEC_Y + EXEC_H + GAP + FOOTER_H + PAD  -- 156
-local PANEL_CLOSE   = TOPBAR_H + CONTENT_CLOSE                -- 206
+local EXEC_Y        = DD_Y + DD_H + GAP
+local CONTENT_CLOSE = EXEC_Y + EXEC_H + GAP + FOOTER_H + PAD
+local PANEL_CLOSE   = TOPBAR_H + CONTENT_CLOSE
 
-local DD_LIST_Y     = DD_Y + DD_H + GAP                       -- 68
-local EXEC_Y_OPEN   = DD_LIST_Y + DD_LIST_H + GAP             -- 217
-local CONTENT_OPEN  = EXEC_Y_OPEN + EXEC_H + GAP + FOOTER_H + PAD -- 305
-local PANEL_OPEN    = TOPBAR_H + CONTENT_OPEN                 -- 355
+local DD_LIST_Y     = DD_Y + DD_H + GAP
+local EXEC_Y_OPEN   = DD_LIST_Y + DD_LIST_H + GAP
+local CONTENT_OPEN  = EXEC_Y_OPEN + EXEC_H + GAP + FOOTER_H + PAD
+local PANEL_OPEN    = TOPBAR_H + CONTENT_OPEN
 
 -- ============================================================
--- PARENT GUI (STEALTH - evita detecção)
+-- PARENT GUI
 -- ============================================================
-local parentGui
+local parentGui = CoreGui
 pcall(function()
     if gethui then parentGui = gethui() end
 end)
-if not parentGui then
-    pcall(function() parentGui = CoreGui end)
-end
-if not parentGui then
-    parentGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-end
-
--- Nome aleatório (anti-cheats procuram por nomes fixos)
-local RANDOM_NAME = "UI_" .. tostring(math.random(100000, 999999))
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = RANDOM_NAME
+ScreenGui.Name = "UI_" .. tostring(math.random(100000, 999999))
 ScreenGui.ResetOnSpawn = false
-ScreenGui.DisplayOrder = 999999
+ScreenGui.DisplayOrder = 999
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = parentGui
 
--- Protege a GUI (Synapse / outros executores)
-pcall(function()
-    if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
-    if protectgui then protectgui(ScreenGui) end
-    if protect_gui then protect_gui(ScreenGui) end
-end)
-
 -- ============================================================
--- SOMBRA (só canto inferior direito)
+-- SOMBRA
 -- ============================================================
 local Shadow = Instance.new("ImageLabel")
 Shadow.BackgroundTransparency = 1
@@ -124,7 +109,6 @@ Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
 Main.ZIndex = 2
 Main.Parent = ScreenGui
--- ⚠️ NÃO usamos Active/Draggable (anti-cheats detectam isso)
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 16)
@@ -145,6 +129,7 @@ MainGrad.Rotation = 90
 MainGrad.Parent = Main
 
 local function updateShadow()
+    if not Shadow.Parent or not Main.Parent then return end
     Shadow.Position = UDim2.new(
         Main.Position.X.Scale, Main.Position.X.Offset + 14,
         Main.Position.Y.Scale, Main.Position.Y.Offset + 14
@@ -217,17 +202,14 @@ TitleGrad.Color = ColorSequence.new({
 })
 TitleGrad.Parent = Title
 
--- Drag area (topbar inteira exceto botão min)
 local DragArea = Instance.new("TextButton")
 DragArea.BackgroundTransparency = 1
 DragArea.Text = ""
 DragArea.Size = UDim2.new(1, -50, 1, 0)
-DragArea.Position = UDim2.new(0, 0, 0, 0)
 DragArea.ZIndex = 11
 DragArea.AutoButtonColor = false
 DragArea.Parent = TopBar
 
--- Botão minimizar
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 32, 0, 32)
 MinBtn.Position = UDim2.new(1, -42, 0.5, -16)
@@ -251,7 +233,7 @@ MinStroke.Transparency = 0.5
 MinStroke.Parent = MinBtn
 
 -- ============================================================
--- CUSTOM DRAG (não usa Draggable = true)
+-- DRAG CUSTOM
 -- ============================================================
 local dragging, dragStart, startPos
 DragArea.InputBegan:Connect(function(input)
@@ -260,18 +242,16 @@ DragArea.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = Main.Position
-        local conn
-        conn = input.Changed:Connect(function()
+        input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
-                conn:Disconnect()
             end
         end)
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if not dragging then return end
+    if not dragging or not Main.Parent then return end
     if input.UserInputType == Enum.UserInputType.MouseMovement
     or input.UserInputType == Enum.UserInputType.Touch then
         local delta = input.Position - dragStart
@@ -294,7 +274,7 @@ Content.ZIndex = 3
 Content.Parent = Main
 
 -- ============================================================
--- DROPDOWN BOTÃO
+-- DROPDOWN BTN
 -- ============================================================
 local DropdownBtn = Instance.new("TextButton")
 DropdownBtn.Position = UDim2.new(0, PAD, 0, DD_Y)
@@ -374,7 +354,7 @@ DlPad.PaddingRight = UDim.new(0, 5)
 DlPad.Parent = DropdownList
 
 -- ============================================================
--- BOTÃO EXECUTAR
+-- EXECUTAR
 -- ============================================================
 local ExecuteBtn = Instance.new("TextButton")
 ExecuteBtn.Position = UDim2.new(0, PAD, 0, EXEC_Y)
@@ -423,7 +403,7 @@ Footer.ZIndex = 6
 Footer.Parent = Content
 
 -- ============================================================
--- OPÇÕES DO DROPDOWN
+-- DROPDOWN - OPÇÕES
 -- ============================================================
 local dropdownOpen = false
 local closeDropdown
@@ -488,10 +468,10 @@ for i, name in ipairs(OPTIONS) do
 end
 
 -- ============================================================
--- LÓGICA DROPDOWN
+-- ABRIR / FECHAR DROPDOWN
 -- ============================================================
 local function openDropdown()
-    if dropdownOpen then return end
+    if dropdownOpen or not Main.Parent then return end
     dropdownOpen = true
     DropdownList.Visible = true
 
@@ -510,6 +490,7 @@ end
 closeDropdown = function()
     if not dropdownOpen then return end
     dropdownOpen = false
+    if not Main.Parent then return end
 
     TweenService:Create(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
@@ -523,7 +504,9 @@ closeDropdown = function()
     DdArrow.Text = "▼"
 
     task.delay(0.22, function()
-        if not dropdownOpen then DropdownList.Visible = false end
+        if not dropdownOpen and DropdownList.Parent then
+            DropdownList.Visible = false
+        end
     end)
 end
 
@@ -532,9 +515,11 @@ DropdownBtn.MouseButton1Click:Connect(function()
 end)
 
 DropdownBtn.MouseEnter:Connect(function()
+    if not DropdownBtn.Parent then return end
     TweenService:Create(DdStroke, TweenInfo.new(0.15), { Transparency = 0, Color = C_ACCENT }):Play()
 end)
 DropdownBtn.MouseLeave:Connect(function()
+    if not DropdownBtn.Parent then return end
     TweenService:Create(DdStroke, TweenInfo.new(0.15), { Transparency = 0.4, Color = Color3.fromRGB(0, 100, 180) }):Play()
 end)
 
@@ -542,39 +527,55 @@ end)
 -- EXECUTAR
 -- ============================================================
 ExecuteBtn.MouseEnter:Connect(function()
+    if not ExecuteBtn.Parent then return end
     TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.15 }):Play()
 end)
 ExecuteBtn.MouseLeave:Connect(function()
+    if not ExecuteBtn.Parent then return end
     TweenService:Create(ExecStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
 end)
 
 ExecuteBtn.MouseButton1Click:Connect(function()
+    -- Bloqueia duplo clique
+    if running then return end
+
     if not selected then
-        local orig = ExecGrad.Color
-        ExecGrad.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50))
         local oldTxt = ExecuteBtn.Text
+        ExecGrad.Color = ColorSequence.new(Color3.fromRGB(200, 50, 50))
         ExecuteBtn.Text = "SELECIONE UM SCRIPT"
         task.wait(1)
-        ExecGrad.Color = orig
-        ExecuteBtn.Text = oldTxt
+        if ExecuteBtn.Parent then
+            ExecGrad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 175, 255)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 85, 195)),
+            })
+            ExecuteBtn.Text = oldTxt
+        end
         return
     end
 
     if dropdownOpen then closeDropdown() end
 
+    running = true
     local oldText = ExecuteBtn.Text
     ExecuteBtn.Text = "EXECUTANDO..."
-    task.wait(0.3)
 
-    -- Executa sem printar nada suspeito
-    local ok, err = pcall(scripts[selected])
-    if ok then
-        ExecuteBtn.Text = "EXECUTADO ✓"
-    else
-        ExecuteBtn.Text = "ERRO"
-    end
-    task.wait(1.3)
-    ExecuteBtn.Text = oldText
+    -- Executa em thread separada pra não travar a UI
+    task.spawn(function()
+        local ok, err = pcall(scripts[selected])
+
+        if ExecuteBtn.Parent then
+            ExecuteBtn.Text = ok and "EXECUTADO ✓" or "ERRO"
+        end
+
+        task.wait(1.5)
+
+        if ExecuteBtn.Parent then
+            ExecuteBtn.Text = oldText
+        end
+
+        running = false
+    end)
 end)
 
 -- ============================================================
@@ -583,11 +584,10 @@ end)
 local minimized = false
 
 local function setMinimized(state)
-    if minimized == state then return end
+    if minimized == state or not Main.Parent then return end
     minimized = state
 
     if state then
-        -- Fecha dropdown instantaneamente (sem bug visual)
         if dropdownOpen then
             dropdownOpen = false
             DropdownList.Visible = false
@@ -605,7 +605,9 @@ local function setMinimized(state)
             Size = UDim2.new(0, PANEL_W, 0, PANEL_CLOSE)
         }):Play()
         task.wait(0.05)
-        Content.Visible = true
+        if Main.Parent then
+            Content.Visible = true
+        end
         MinBtn.Text = "—"
     end
 end
@@ -615,10 +617,12 @@ MinBtn.MouseButton1Click:Connect(function()
 end)
 
 MinBtn.MouseEnter:Connect(function()
+    if not MinBtn.Parent then return end
     TweenService:Create(MinBtn, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(0, 70, 140) }):Play()
     TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
 end)
 MinBtn.MouseLeave:Connect(function()
+    if not MinBtn.Parent then return end
     TweenService:Create(MinBtn, TweenInfo.new(0.15), { BackgroundColor3 = C_BG3 }):Play()
     TweenService:Create(MinStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
 end)
